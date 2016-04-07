@@ -1,0 +1,15 @@
+group 'wimt.othertree'
+
+apply plugin: 'java'
+jar.archiveName="othertree-client-"+libraryVersion+".jar"
+
+sourceCompatibility = 1.7
+[compileJava, compileTestJava]*.options*.encoding = 'UTF-8'
+
+sourceSets.main.java.srcDirs = [ "src/" ]
+
+
+eclipse.project {
+    name = "wimt-othertree-client"
+}
+

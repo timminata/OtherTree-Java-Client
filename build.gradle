@@ -1,0 +1,165 @@
+buildscript {
+    repositories {
+        mavenCentral()
+        jcenter()
+    }
+    dependencies {
+        classpath "com.android.tools.build:gradle:1.5.0"
+        classpath 'com.jfrog.bintray.gradle:gradle-bintray-plugin:1.4'
+        classpath 'com.github.dcendents:android-maven-gradle-plugin:1.3'
+    }
+}
+
+allprojects {
+    apply plugin: "eclipse"
+    apply plugin: "idea"
+
+    version = "1.0"
+    ext {
+        appName = "wimt.othertree"
+    }
+    repositories {
+        maven {
+            url  "http://dl.bintray.com/jtribe/maven"
+        }
+        maven {
+            url 'http://clojars.org/repo'
+        }
+        jcenter()
+        mavenCentral()
+    }
+}
+
+project (":client"){
+    apply plugin: "java"
+    apply plugin: "maven-publish"
+    apply plugin: "com.jfrog.bintray"
+    ext {
+        bintrayRepo="https://bintray.com/bintray/jcenter"
+        bintrayName = "othertree-client"
+        publishedGroupId = "com.whereismytransport.othertree.client"
+        libraryName = "OtherTreeClient"
+        artifact = "othertree-client"
+        libraryDescription = "A java library to assist developers in connecting and subscribing to data from an OtherTree instance"
+
+        siteUrl = "https://othertree.org"
+        gitUrl = "https://github.com/OtherTree/OtherTree-SDKs.git"
+        libraryVersion = "1.0.1"
+        developerId = "ncthbrt"
+        developerName = "Nick Cuthbert"
+        developerEmail = "nick@whereismytransport.com"
+        licenseName = "The Apache Software License, Version 2.0"
+        licenseUrl = "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        allLicenses = ["Apache-2.0"]
+    }
+
+
+    dependencies {
+        compile "org.java-websocket:java-websocket:1.3.1"
+        compile "au.com.jtribe:signalr-client-sdk:1.0.9"
+        compile "com.google.code.gson:gson:2.5"
+        compile "com.google.protobuf:protobuf-java-util:3.0.0-beta-1"
+        compile "com.google.oauth-client:google-oauth-client:1.21.0"
+        compile "com.fasterxml.jackson.core:jackson-core:2.7.3"
+        compile "com.google.http-client:google-http-client-jackson2:1.21.0"
+    }
+    task sourceJar(type: Jar) {
+        classifier 'sources'
+        from sourceSets.main.allJava
+        archiveName="othertree-client-"+libraryVersion+"-sources.jar"
+    }
+
+    task javadocJar(type: Jar, dependsOn: javadoc) {
+        classifier 'javadoc'
+        from javadoc.destinationDir
+        archiveName="othertree-client-"+libraryVersion+"-javadoc.jar"
+    }
+
+    version = libraryVersion
+    group = publishedGroupId
+
+    publishing {
+        publications {
+            othertreePublication(MavenPublication) {
+                from components.java
+                groupId publishedGroupId
+                artifactId artifact
+                pom.withXml{
+                    asNode().appendNode('description',libraryDescription)
+                    asNode().appendNode('url',siteUrl)
+                    asNode().appendNode('name',libraryName)
+
+                    Node scm=asNode().appendNode('scm')
+                    scm.appendNode('connection',gitUrl)
+                    scm.appendNode('developerConnection',gitUrl)
+                    scm.appendNode('url',siteUrl)
+
+                    Node developers=asNode().appendNode('developers')
+                    Node developer=developers.appendNode('developer')
+                    developer.appendNode('id',developerId)
+                    developer.appendNode('name',developerName)
+                    developer.appendNode('email',developerEmail)
+
+                    Node licenses=asNode().appendNode('licenses')
+                    Node license=licenses.appendNode('license')
+                    license.appendNode('name',licenseName)
+                    license.appendNode('url',licenseUrl)
+                }
+                artifacts =[jar, javadocJar, sourceJar]
+                version libraryVersion
+            }
+        }
+    }
+
+    publish.dependsOn sourceJar
+    publish.dependsOn javadocJar
+    publish.dependsOn jar
+
+
+// Bintray
+    Properties properties = new Properties()
+    properties.load(project.rootProject.file('local.properties').newDataInputStream())
+
+    bintray {
+        user = properties.getProperty("bintray.user")
+        key = properties.getProperty("bintray.apikey")
+        publications = ['othertreePublication']
+        pkg {
+            repo = 'maven'
+            name =  bintrayName
+            userOrg = developerId
+            licenses = allLicenses
+            vcsUrl = gitUrl
+            publish = true
+            publicDownloadNumbers = true
+            version {
+                desc = libraryDescription
+                released  = new Date()
+                vcsTag = libraryVersion
+                gpg {
+                    sign = true //Determines whether to GPG sign the files. The default is false
+                    passphrase = properties.getProperty("bintray.gpg.password")
+                    //Optional. The passphrase for GPG signing'
+                }
+
+            }
+
+        }
+    }
+}
+
+project(":android") {
+    apply plugin: "com.android.library"
+
+    configurations { natives }
+    dependencies {
+        compile project(":client")
+        compile "au.com.jtribe:signalr-client-sdk-android:1.0.0@aar"
+    }
+
+
+}
+
+tasks.eclipse.doLast {
+    delete ".project"
+}
