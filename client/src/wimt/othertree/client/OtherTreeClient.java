@@ -2,6 +2,7 @@ package wimt.othertree.client;
 import com.google.protobuf.GeneratedMessage;
 import com.google.protobuf.InvalidProtocolBufferException;
 
+import java.io.Console;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -23,8 +24,6 @@ import java.util.concurrent.FutureTask;
 
 
 public class OtherTreeClient implements AutoCloseable {
-
-
 
     protected String url;
     private HubConnection connection;
@@ -54,6 +53,10 @@ public class OtherTreeClient implements AutoCloseable {
         this("",new NullAuthorizationProvider(),true,new NullLogger());
     }
 
+    public microsoft.aspnet.signalr.client.ConnectionState isConnected()
+    {
+        return connection.getState();
+    }
 
 
     protected void  init(String url, final AuthorizationProvider provider, boolean useDefaultUrl){
@@ -64,18 +67,21 @@ public class OtherTreeClient implements AutoCloseable {
 
     }
 
-
     public Future<Void> futureConnection(){
 
         connection.setCredentials(new Credentials() {
             @Override
             public void prepareRequest(Request request) {
-                if(currentToken !=null && !currentToken.isExpired()){
-                    request.addHeader("Authorization", "Bearer "+ currentToken.token);
-                }else{
-                    AuthorizationProvider providerClone=provider.clone();
-                    FutureTask<AccessToken> accessTokenFutureTask=new FutureTask<AccessToken>(providerClone);
+                try
+                {
+                    final AccessToken at = provider.call();
+                    request.addHeader("Authorization", "Bearer " + at.token);
                 }
+                catch(Exception e)
+                {
+                    System.out.println("Exception!");
+                }
+
             }
         });
 
@@ -102,7 +108,15 @@ public class OtherTreeClient implements AutoCloseable {
     }
 
     public void connect() throws ExecutionException, InterruptedException {
-        futureConnection().wait();
+        //Need to catch IllegalMonitorStateException - not sure why, I also tried with synchronise and still had the same problem
+        try
+        {
+            futureConnection().wait();
+        }
+        catch(IllegalMonitorStateException e)
+        {
+            System.out.println(e);
+        }
     }
 
     private static int[] toIntArray(byte[] bytes){
