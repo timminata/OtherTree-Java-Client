@@ -72,16 +72,12 @@ public class OtherTreeClient implements AutoCloseable {
         connection.setCredentials(new Credentials() {
             @Override
             public void prepareRequest(Request request) {
-                try
-                {
+                try {
                     final AccessToken at = provider.call();
                     request.addHeader("Authorization", "Bearer " + at.token);
+                }catch (Exception e){
+                    logger.log(e.getMessage(),LogLevel.Critical);
                 }
-                catch(Exception e)
-                {
-                    System.out.println("Exception!");
-                }
-
             }
         });
 
@@ -107,16 +103,8 @@ public class OtherTreeClient implements AutoCloseable {
         return Base64.decode(hexString, Base64.DEFAULT);
     }
 
-    public void connect() throws ExecutionException, InterruptedException {
-        //Need to catch IllegalMonitorStateException - not sure why, I also tried with synchronise and still had the same problem
-        try
-        {
-            futureConnection().wait();
-        }
-        catch(IllegalMonitorStateException e)
-        {
-            System.out.println(e);
-        }
+    public void connect() throws ExecutionException, InterruptedException, IllegalMonitorStateException {
+        futureConnection();
     }
 
     private static int[] toIntArray(byte[] bytes){
